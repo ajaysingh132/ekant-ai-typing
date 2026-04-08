@@ -40,3 +40,8 @@ def ui():
     </body>
     </html>
     """
+@app.post("/ocr")
+async def ocr(file: UploadFile = File(...)):
+    image = Image.open(io.BytesIO(await file.read()))
+    text = pytesseract.image_to_string(image)
+    return {"text": text}
