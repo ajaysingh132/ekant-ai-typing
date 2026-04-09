@@ -1,35 +1,36 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse
-from PIL import Image
-import io
-import numpy as np
-import easyocr
+import requests
 
 app = FastAPI()
 
-# OCR Reader
-reader = easyocr.Reader(['en'], gpu=False)
+API_KEY = "helloworld"  # free key (testing)
 
 @app.get("/")
 def home():
     return {"message": "Ekant AI Typing Running 🚀"}
 
-# OCR API
+
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):
-    contents = await file.read()
+    data = await file.read()
 
-    image = Image.open(io.BytesIO(contents))
-    image = np.array(image)
+    response = requests.post(
+        "https://api.ocr.space/parse/image",
+        files={"file": data},
+        data={"apikey": API_KEY, "language": "eng"}
+    )
 
-    result = reader.readtext(image, detail=0)
+    result = response.json()
 
-    text = " ".join(result)
+    try:
+        text = result["ParsedResults"][0]["ParsedText"]
+    except:
+        text = "Error reading text"
 
     return {"text": text}
 
 
-# UI
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     return """
