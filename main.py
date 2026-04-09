@@ -1,12 +1,15 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse
-import pytesseract
 from PIL import Image
 import io
+import numpy as np
+import easyocr
 
 app = FastAPI()
 
-# Home
+# OCR Reader
+reader = easyocr.Reader(['en'], gpu=False)
+
 @app.get("/")
 def home():
     return {"message": "Ekant AI Typing Running 🚀"}
@@ -15,10 +18,13 @@ def home():
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents))
 
-    # OCR (English + Hindi)
-    text = pytesseract.image_to_string(image, lang='eng')
+    image = Image.open(io.BytesIO(contents))
+    image = np.array(image)
+
+    result = reader.readtext(image, detail=0)
+
+    text = " ".join(result)
 
     return {"text": text}
 
@@ -27,65 +33,41 @@ async def ocr(file: UploadFile = File(...)):
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     return """
-<!DOCTYPE html>
-<html>
-<head>
-<title>AI Typing System</title>
-<style>
-body { font-family: Arial; padding:20px; background:#f5f5f5; }
-.container { max-width:600px; margin:auto; background:white; padding:20px; border-radius:10px; }
-button { padding:10px; margin-top:10px; }
-</style>
-</head>
-<body>
+    <h1>🚀 AI Typing System</h1>
 
-<div class="container">
-<h1>🚀 AI Typing System</h1>
+    <h2>🎤 Voice</h2>
+    <button onclick="start()">Start Speaking</button>
+    <p id="voice"></p>
 
-<h2>🎤 Voice Typing</h2>
-<button onclick="start()">Start Speaking</button>
-<p id="voice_output"></p>
+    <h2>📷 OCR (Photo / Handwriting)</h2>
+    <input type="file" id="file">
+    <button onclick="upload()">Convert</button>
+    <p id="ocr"></p>
 
-<h2>📸 OCR (Photo / Handwriting)</h2>
-<input type="file" id="file">
-<br>
-<button onclick="upload()">Convert</button>
-<p id="ocr_output"></p>
+    <script>
+    function start() {
+        const r = new webkitSpeechRecognition();
+        r.lang = "hi-IN";
+        r.onresult = e => {
+            document.getElementById("voice").innerText =
+                e.results[0][0].transcript;
+        };
+        r.start();
+    }
 
-</div>
+    async function upload() {
+        let file = document.getElementById("file").files[0];
 
-<script>
-// Voice
-function start() {
-    const r = new webkitSpeechRecognition();
-    r.lang = "hi-IN";
+        let formData = new FormData();
+        formData.append("file", file);
 
-    r.onresult = e => {
-        document.getElementById("voice_output").innerText =
-        e.results[0][0].transcript;
-    };
+        let res = await fetch("/ocr", {
+            method: "POST",
+            body: formData
+        });
 
-    r.start();
-}
-
-// OCR
-async function upload() {
-    let fileInput = document.getElementById("file");
-    let file = fileInput.files[0];
-
-    let formData = new FormData();
-    formData.append("file", file);
-
-    let res = await fetch("/ocr", {
-        method: "POST",
-        body: formData
-    });
-
-    let data = await res.json();
-    document.getElementById("ocr_output").innerText = data.text;
-}
-</script>
-
-</body>
-</html>
-"""
+        let data = await res.json();
+        document.getElementById("ocr").innerText = data.text;
+    }
+    </script>
+    """
