@@ -9,12 +9,12 @@
 :root{
   --bg:#0a0a0a;
   --text:#fff;
-  --box:#111;
+  --card:#111;
 }
 .light{
   --bg:#f5f5f5;
   --text:#000;
-  --box:#fff;
+  --card:#fff;
 }
 
 body{
@@ -23,6 +23,15 @@ body{
   color:var(--text);
   padding:15px;
   transition:.3s;
+}
+
+h2{text-align:center;}
+
+.card{
+  background:var(--card);
+  padding:12px;
+  margin-bottom:20px;
+  border-radius:10px;
 }
 
 button{
@@ -39,15 +48,13 @@ textarea{
   height:120px;
   margin-top:8px;
   padding:10px;
-  background:var(--box);
-  color:var(--text);
-  border:1px solid #333;
+  background:#000;
+  color:#fff;
 }
 
-.card{
-  margin-bottom:20px;
-  padding:10px;
-  border:1px solid #333;
+img{
+  max-width:100%;
+  margin-top:10px;
   border-radius:8px;
 }
 
@@ -55,8 +62,6 @@ textarea{
   max-height:150px;
   overflow:auto;
   font-size:12px;
-  border:1px solid #333;
-  padding:8px;
 }
 </style>
 </head>
@@ -65,37 +70,43 @@ textarea{
 
 <h2>🚀 Ekaant AI Typing</h2>
 
-<button onclick="toggleTheme()">🌗 Theme बदलें</button>
+<button onclick="toggleTheme()">🌗 Theme</button>
 
 <!-- VOICE -->
 <div class="card">
-<h3>🎤 Voice</h3>
-<button onclick="startMic()">Start</button>
+<h3>🎤 Voice Typing</h3>
+<button onclick="startMic()">Start Mic</button>
 <textarea id="voice"></textarea>
 <button onclick="saveData('voice')">💾 Save</button>
 </div>
 
-<!-- IMAGE -->
+<!-- IMAGE OCR -->
 <div class="card">
 <h3>📷 Image OCR</h3>
-<input type="file" id="imgInput">
-<button onclick="processImage()">Extract</button>
+
+<input type="file" id="imgInput" accept="image/*" onchange="previewImg(event)">
+<img id="preview" style="display:none;">
+
+<br>
+<button onclick="processImage()">✦ Extract Text</button>
+<div id="imgStatus"></div>
+
 <textarea id="img"></textarea>
-<button onclick="saveData('img')">💾 Save</button>
 </div>
 
 <!-- PDF -->
 <div class="card">
-<h3>📄 PDF</h3>
+<h3>📄 PDF to Text</h3>
+
 <input type="file" id="pdfInput">
-<button onclick="processPDF()">Extract</button>
+<button onclick="processPDF()">✦ Extract PDF</button>
+
 <textarea id="pdf"></textarea>
-<button onclick="saveData('pdf')">💾 Save</button>
 </div>
 
 <!-- HISTORY -->
 <div class="card">
-<h3>🕘 History (Offline)</h3>
+<h3>🕘 History</h3>
 <div class="history" id="history"></div>
 <button onclick="clearHistory()">🗑 Clear</button>
 </div>
@@ -110,19 +121,32 @@ function startMic(){
   const rec = new (window.SpeechRecognition||window.webkitSpeechRecognition)();
   rec.lang="hi-IN";
   rec.start();
+
   rec.onresult=e=>{
     document.getElementById("voice").value+=e.results[0][0].transcript+" ";
   }
 }
 
-// 📷 IMAGE
+// 📷 PREVIEW
+function previewImg(e){
+  let file=e.target.files[0];
+  let img=document.getElementById("preview");
+  img.src=URL.createObjectURL(file);
+  img.style.display="block";
+}
+
+// 📷 OCR
 function processImage(){
   let file=document.getElementById("imgInput").files[0];
   if(!file) return alert("Image select करें");
 
+  document.getElementById("imgStatus").innerText="Processing...";
+
   Tesseract.recognize(file,'eng+hin')
   .then(r=>{
     document.getElementById("img").value=r.data.text;
+    document.getElementById("imgStatus").innerText="Done ✅";
+    saveData('img');
   });
 }
 
@@ -135,45 +159,43 @@ async function processPDF(){
   reader.onload=async function(){
     let pdf=await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
     let text="";
+
     for(let i=1;i<=pdf.numPages;i++){
       let page=await pdf.getPage(i);
       let c=await page.getTextContent();
       c.items.forEach(it=>text+=it.str+" ");
     }
+
     document.getElementById("pdf").value=text;
+    saveData('pdf');
   }
   reader.readAsArrayBuffer(file);
 }
 
-// 💾 SAVE HISTORY
+// 💾 SAVE
 function saveData(type){
   let data=document.getElementById(type).value;
   if(!data) return;
 
   let history=JSON.parse(localStorage.getItem("history")||"[]");
   history.unshift({type,data,time:new Date().toLocaleString()});
-
   localStorage.setItem("history",JSON.stringify(history));
   loadHistory();
 }
 
-// 📜 LOAD HISTORY
+// 📜 LOAD
 function loadHistory(){
   let history=JSON.parse(localStorage.getItem("history")||"[]");
   let html="";
+
   history.forEach((h,i)=>{
-    html+=`<div onclick="loadItem(${i})">
+    html+=`<div onclick="alert('${h.data.replace(/'/g,"")}')">
     [${h.type}] ${h.time}<br>
-    ${h.data.substring(0,50)}...
+    ${h.data.substring(0,40)}...
     <hr></div>`;
   });
-  document.getElementById("history").innerHTML=html;
-}
 
-// 🔁 LOAD ITEM
-function loadItem(i){
-  let history=JSON.parse(localStorage.getItem("history"));
-  alert(history[i].data);
+  document.getElementById("history").innerHTML=html;
 }
 
 // 🗑 CLEAR
