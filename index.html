@@ -1,26 +1,110 @@
+HTML
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
-  <title>Ekant AI Studio 🚀</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ekaant AI Typing</title>
+
+<style>
+body{
+  font-family:sans-serif;
+  background:#0a0a0a;
+  color:#fff;
+  text-align:center;
+  padding:20px;
+}
+button{
+  padding:12px 20px;
+  margin:10px;
+  border:none;
+  border-radius:6px;
+  background:#C9A84C;
+  color:#000;
+  font-weight:bold;
+}
+textarea{
+  width:100%;
+  height:150px;
+  margin-top:10px;
+  padding:10px;
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+}
+</style>
 </head>
+
 <body>
 
-<h2>🎤 Voice Typing</h2>
-<button onclick="start()">Start बोलो</button>
-<p id="output"></p>
+<h2>🚀 Ekaant AI Typing System</h2>
+
+<!-- MIC -->
+<h3>🎤 Voice Typing</h3>
+<button onclick="startMic()">Start Mic</button>
+<textarea id="voiceText"></textarea>
+
+<!-- IMAGE OCR -->
+<h3>📷 Image / Photo OCR</h3>
+<input type="file" accept="image/*" onchange="readImage(event)">
+<textarea id="imgText"></textarea>
+
+<!-- PDF -->
+<h3>📄 PDF to Text</h3>
+<input type="file" accept="application/pdf" onchange="readPDF(event)">
+<textarea id="pdfText"></textarea>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
 <script>
-function start() {
-  const recognition = new webkitSpeechRecognition();
+
+// 🎤 MIC
+function startMic(){
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.lang = "hi-IN";
-
-  recognition.onresult = function(event) {
-    document.getElementById("output").innerText =
-      event.results[0][0].transcript;
-  };
-
   recognition.start();
+
+  recognition.onresult = function(event){
+    document.getElementById("voiceText").value += event.results[0][0].transcript;
+  }
 }
+
+// 📷 IMAGE OCR
+function readImage(event){
+  const file = event.target.files[0];
+  Tesseract.recognize(file, 'eng+hin')
+  .then(({ data: { text } }) => {
+    document.getElementById("imgText").value = text;
+  });
+}
+
+// 📄 PDF OCR
+async function readPDF(event){
+  const file = event.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async function(){
+    const typedarray = new Uint8Array(this.result);
+
+    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+    let fullText = "";
+
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+
+      content.items.forEach(item=>{
+        fullText += item.str + " ";
+      });
+    }
+
+    document.getElementById("pdfText").value = fullText;
+  }
+
+  reader.readAsArrayBuffer(file);
+}
+
 </script>
 
 </body>
