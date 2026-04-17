@@ -3,112 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ekaant AI Typing</title>
+<title>Ekaant AI Smart Typing</title>
 
 <style>
-:root{
-  --bg:#0a0a0a;
-  --text:#fff;
-  --card:#111;
-}
-.light{
-  --bg:#f5f5f5;
-  --text:#000;
-  --card:#fff;
-}
+:root{--bg:#0a0a0a;--text:#fff;--card:#111;}
+.light{--bg:#f5f5f5;--text:#000;--card:#fff;}
 
-body{
-  font-family:sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  padding:15px;
-  transition:.3s;
-}
-
+body{background:var(--bg);color:var(--text);font-family:sans-serif;padding:10px;}
 h2{text-align:center;}
 
-.card{
-  background:var(--card);
-  padding:12px;
-  margin-bottom:20px;
-  border-radius:10px;
-}
+.tabs{display:flex;gap:5px;margin-bottom:10px;}
+.tab{flex:1;padding:10px;background:#222;color:#fff;border:none;}
+.tab.active{background:#C9A84C;color:#000;}
 
-button{
-  padding:10px 15px;
-  margin:6px;
-  border:none;
-  border-radius:6px;
-  background:#C9A84C;
-  font-weight:bold;
-}
+.card{background:var(--card);padding:10px;border-radius:10px;}
 
-textarea{
-  width:100%;
-  height:120px;
-  margin-top:8px;
-  padding:10px;
-  background:#000;
-  color:#fff;
-}
+textarea{width:100%;height:120px;margin-top:8px;padding:10px;}
+button{padding:10px;margin-top:6px;border:none;background:#C9A84C;font-weight:bold;}
+img{max-width:100%;margin-top:10px;border-radius:8px;}
 
-img{
-  max-width:100%;
-  margin-top:10px;
-  border-radius:8px;
-}
-
-.history{
-  max-height:150px;
-  overflow:auto;
-  font-size:12px;
-}
 </style>
 </head>
 
 <body>
 
-<h2>🚀 Ekaant AI Typing</h2>
-
+<h2>🚀 Ekaant Smart AI</h2>
 <button onclick="toggleTheme()">🌗 Theme</button>
 
-<!-- VOICE -->
-<div class="card">
-<h3>🎤 Voice Typing</h3>
-<button onclick="startMic()">Start Mic</button>
-<textarea id="voice"></textarea>
-<button onclick="saveData('voice')">💾 Save</button>
+<div class="tabs">
+<button class="tab active" onclick="showTab('voice',this)">🎤</button>
+<button class="tab" onclick="showTab('image',this)">📷</button>
+<button class="tab" onclick="showTab('pdf',this)">📄</button>
 </div>
 
-<!-- IMAGE OCR -->
-<div class="card">
-<h3>📷 Image OCR</h3>
+<!-- VOICE -->
+<div id="voice" class="card">
+<button onclick="startMic()">🎤 Start</button>
+<textarea id="v"></textarea>
+</div>
 
-<input type="file" id="imgInput" accept="image/*" onchange="previewImg(event)">
-<img id="preview" style="display:none;">
-
-<br>
-<button onclick="processImage()">✦ Extract Text</button>
-<div id="imgStatus"></div>
-
+<!-- IMAGE -->
+<div id="image" class="card" style="display:none;">
+<input type="file" accept="image/*" onchange="autoOCR(event)">
+<img id="prev" style="display:none;">
+<div id="status"></div>
 <textarea id="img"></textarea>
 </div>
 
 <!-- PDF -->
-<div class="card">
-<h3>📄 PDF to Text</h3>
-
-<input type="file" id="pdfInput">
-<button onclick="processPDF()">✦ Extract PDF</button>
-
-<textarea id="pdf"></textarea>
-</div>
-
-<!-- HISTORY -->
-<div class="card">
-<h3>🕘 History</h3>
-<div class="history" id="history"></div>
-<button onclick="clearHistory()">🗑 Clear</button>
+<div id="pdf" class="card" style="display:none;">
+<input type="file" onchange="autoPDF(event)">
+<textarea id="pdfText"></textarea>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
@@ -116,102 +61,73 @@ img{
 
 <script>
 
-// 🎤 MIC
+// tabs
+function showTab(id,btn){
+  document.querySelectorAll('.card').forEach(d=>d.style.display='none');
+  document.getElementById(id).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// mic
 function startMic(){
-  const rec = new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+  let rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
   rec.lang="hi-IN";
   rec.start();
 
   rec.onresult=e=>{
-    document.getElementById("voice").value+=e.results[0][0].transcript+" ";
+    document.getElementById("v").value+=e.results[0][0].transcript+" ";
+    save("voice",document.getElementById("v").value);
   }
 }
 
-// 📷 PREVIEW
-function previewImg(e){
+// image auto OCR
+function autoOCR(e){
   let file=e.target.files[0];
-  let img=document.getElementById("preview");
-  img.src=URL.createObjectURL(file);
-  img.style.display="block";
-}
+  document.getElementById("prev").src=URL.createObjectURL(file);
+  document.getElementById("prev").style.display="block";
+  document.getElementById("status").innerText="Processing...";
 
-// 📷 OCR
-function processImage(){
-  let file=document.getElementById("imgInput").files[0];
-  if(!file) return alert("Image select करें");
-
-  document.getElementById("imgStatus").innerText="Processing...";
-
-  Tesseract.recognize(file,'eng+hin')
-  .then(r=>{
+  Tesseract.recognize(file,'eng+hin').then(r=>{
     document.getElementById("img").value=r.data.text;
-    document.getElementById("imgStatus").innerText="Done ✅";
-    saveData('img');
+    document.getElementById("status").innerText="Done";
+    save("img",r.data.text);
   });
 }
 
-// 📄 PDF
-async function processPDF(){
-  let file=document.getElementById("pdfInput").files[0];
-  if(!file) return alert("PDF select करें");
-
+// pdf auto
+async function autoPDF(e){
+  let file=e.target.files[0];
   let reader=new FileReader();
+
   reader.onload=async function(){
     let pdf=await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
     let text="";
-
     for(let i=1;i<=pdf.numPages;i++){
-      let page=await pdf.getPage(i);
-      let c=await page.getTextContent();
+      let p=await pdf.getPage(i);
+      let c=await p.getTextContent();
       c.items.forEach(it=>text+=it.str+" ");
     }
-
-    document.getElementById("pdf").value=text;
-    saveData('pdf');
+    document.getElementById("pdfText").value=text;
+    save("pdf",text);
   }
+
   reader.readAsArrayBuffer(file);
 }
 
-// 💾 SAVE
-function saveData(type){
-  let data=document.getElementById(type).value;
-  if(!data) return;
-
-  let history=JSON.parse(localStorage.getItem("history")||"[]");
-  history.unshift({type,data,time:new Date().toLocaleString()});
-  localStorage.setItem("history",JSON.stringify(history));
-  loadHistory();
+// save
+function save(type,data){
+  let h=JSON.parse(localStorage.getItem("h")||"[]");
+  h.unshift({type,data,time:new Date().toLocaleString()});
+  localStorage.setItem("h",JSON.stringify(h));
 }
 
-// 📜 LOAD
-function loadHistory(){
-  let history=JSON.parse(localStorage.getItem("history")||"[]");
-  let html="";
-
-  history.forEach((h,i)=>{
-    html+=`<div onclick="alert('${h.data.replace(/'/g,"")}')">
-    [${h.type}] ${h.time}<br>
-    ${h.data.substring(0,40)}...
-    <hr></div>`;
-  });
-
-  document.getElementById("history").innerHTML=html;
-}
-
-// 🗑 CLEAR
-function clearHistory(){
-  localStorage.removeItem("history");
-  loadHistory();
-}
-
-// 🌗 THEME
+// theme
 function toggleTheme(){
   document.body.classList.toggle("light");
 }
 
-loadHistory();
-
 </script>
 
 </body>
-  </html>
+</html>
