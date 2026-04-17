@@ -88,13 +88,53 @@ function cleanText(text){
     .trim();
   }
   
-// image auto OCR
 function autoOCR(e){
-  let file=e.target.files[0];
-  document.getElementById("prev").src=URL.createObjectURL(file);
-  document.getElementById("prev").style.display="block";
-  document.getElementById("status").innerText="Processing...";
-let raw = r.data.text;
+  let file = e.target.files[0];
+
+  if(!file){
+    alert("Image select करें");
+    return;
+  }
+
+  let status = document.getElementById("status");
+  let output = document.getElementById("img");
+
+  // preview
+  document.getElementById("prev").src = URL.createObjectURL(file);
+  document.getElementById("prev").style.display = "block";
+
+  status.innerText = "Processing... ⏳";
+  output.value = "";
+
+  Tesseract.recognize(file, 'eng+hin', {
+    logger: m => {
+      if(m.status === "recognizing text"){
+        status.innerText = "Processing: " + Math.round(m.progress*100) + "%";
+      }
+    }
+  })
+  .then(r => {
+
+    let raw = r.data.text;
+
+    let clean = raw
+      .replace(/\n+/g," ")
+      .replace(/\s+/g," ")
+      .replace(/([।.!?])\s*/g,"$1\n")
+      .trim();
+
+    output.value = clean;
+
+    status.innerText = "Done ✅";
+
+    save("img", clean);
+
+  })
+  .catch(err=>{
+    status.innerText = "Error ❌";
+    console.log(err);
+  });
+}
 
 let clean = cleanText(raw);
 
