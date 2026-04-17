@@ -3,180 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ekaant AI Smart Typing</title>
+<title>Ekaant AI PRO</title>
 
 <style>
-:root{--bg:#0a0a0a;--text:#fff;--card:#111;}
-.light{--bg:#f5f5f5;--text:#000;--card:#fff;}
-
-body{background:var(--bg);color:var(--text);font-family:sans-serif;padding:10px;}
-h2{text-align:center;}
-
-.tabs{display:flex;gap:5px;margin-bottom:10px;}
-.tab{flex:1;padding:10px;background:#222;color:#fff;border:none;}
-.tab.active{background:#C9A84C;color:#000;}
-
-.card{background:var(--card);padding:10px;border-radius:10px;}
-
+body{background:#0a0a0a;color:#fff;font-family:sans-serif;padding:10px;}
 textarea{width:100%;height:120px;margin-top:8px;padding:10px;}
-button{padding:10px;margin-top:6px;border:none;background:#C9A84C;font-weight:bold;}
-img{max-width:100%;margin-top:10px;border-radius:8px;}
-
+button{padding:10px;margin:5px;background:#C9A84C;border:none;font-weight:bold;}
+.card{background:#111;padding:10px;border-radius:10px;margin-bottom:10px;}
 </style>
 </head>
 
 <body>
 
-<h2>🚀 Ekaant Smart AI</h2>
-<button onclick="toggleTheme()">🌗 Theme</button>
+<h2>🚀 Ekaant AI PRO</h2>
 
-<div class="tabs">
-<button class="tab active" onclick="showTab('voice',this)">🎤</button>
-<button class="tab" onclick="showTab('image',this)">📷</button>
-<button class="tab" onclick="showTab('pdf',this)">📄</button>
-</div>
-
-<!-- VOICE -->
-<div id="voice" class="card">
-<button onclick="startMic()">🎤 Start</button>
-<textarea id="v"></textarea>
-</div>
-
-<!-- IMAGE -->
-<div id="image" class="card" style="display:none;">
+<!-- IMAGE OCR -->
+<div class="card">
 <input type="file" accept="image/*" onchange="autoOCR(event)">
-<img id="prev" style="display:none;">
 <div id="status"></div>
+
 <textarea id="img"></textarea>
+
+<button onclick="cleanAI()">✨ Clean Text</button>
+<button onclick="makeSummary()">🧠 Summary</button>
+<button onclick="copyText()">📋 Copy</button>
+<button onclick="downloadTXT()">⬇ TXT</button>
+<button onclick="downloadPDF()">⬇ PDF</button>
 </div>
 
-<!-- PDF -->
-<div id="pdf" class="card" style="display:none;">
-<input type="file" onchange="autoPDF(event)">
-<textarea id="pdfText"></textarea>
+<!-- SUMMARY -->
+<div class="card">
+<h3>📌 Summary</h3>
+<textarea id="summary"></textarea>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 
-// tabs
-function showTab(id,btn){
-  document.querySelectorAll('.card').forEach(d=>d.style.display='none');
-  document.getElementById(id).style.display='block';
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-// mic
-function startMic(){
-  let rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
-  rec.lang="hi-IN";
-  rec.start();
-
-  rec.onresult=e=>{
-    document.getElementById("v").value+=e.results[0][0].transcript+" ";
-    save("voice",document.getElementById("v").value);
-  }
-}
-function cleanText(text){
-  return text
-    .replace(/\n+/g," ")        // line हटाओ
-    .replace(/\s+/g," ")        // extra space हटाओ
-    .replace(/([।.!?])\s*/g,"$1\n") // sentence break
-    .trim();
-  }
-  
+// OCR
 function autoOCR(e){
-  let file = e.target.files[0];
+ let file=e.target.files[0];
+ if(!file)return;
 
-  if(!file){
-    alert("Image select करें");
-    return;
-  }
+ let status=document.getElementById("status");
+ status.innerText="Processing...";
 
-  let status = document.getElementById("status");
-  let output = document.getElementById("img");
-
-  // preview
-  document.getElementById("prev").src = URL.createObjectURL(file);
-  document.getElementById("prev").style.display = "block";
-
-  status.innerText = "Processing... ⏳";
-  output.value = "";
-
-  Tesseract.recognize(file, 'eng+hin', {
-    logger: m => {
-      if(m.status === "recognizing text"){
-        status.innerText = "Processing: " + Math.round(m.progress*100) + "%";
-      }
-    }
-  })
-  .then(r => {
-
-    let raw = r.data.text;
-
-    let clean = raw
-      .replace(/\n+/g," ")
-      .replace(/\s+/g," ")
-      .replace(/([।.!?])\s*/g,"$1\n")
-      .trim();
-
-    output.value = clean;
-
-    status.innerText = "Done ✅";
-
-    save("img", clean);
-
-  })
-  .catch(err=>{
-    status.innerText = "Error ❌";
-    console.log(err);
-  });
+ Tesseract.recognize(file,'eng+hin').then(r=>{
+   document.getElementById("img").value=r.data.text;
+   status.innerText="Done ✅";
+ });
 }
 
-let clean = cleanText(raw);
+// ✨ CLEAN AI (basic smart)
+function cleanAI(){
+ let t=document.getElementById("img").value;
 
-document.getElementById("img").value = clean;
-  
-  Tesseract.recognize(file,'eng+hin').then(r=>{
-    document.getElementById("img").value=r.data.text;
-    document.getElementById("status").innerText="Done";
-    save("img",r.data.text);
-  });
+ t=t.replace(/\n+/g," ")
+     .replace(/\s+/g," ")
+     .replace(/([।.!?])\s*/g,"$1\n")
+     .trim();
+
+ document.getElementById("img").value=t;
 }
 
-// pdf auto
-async function autoPDF(e){
-  let file=e.target.files[0];
-  let reader=new FileReader();
+// 🧠 SUMMARY
+function makeSummary(){
+ let t=document.getElementById("img").value;
 
-  reader.onload=async function(){
-    let pdf=await pdfjsLib.getDocument(new Uint8Array(this.result)).promise;
-    let text="";
-    for(let i=1;i<=pdf.numPages;i++){
-      let p=await pdf.getPage(i);
-      let c=await p.getTextContent();
-      c.items.forEach(it=>text+=it.str+" ");
-    }
-    document.getElementById("pdfText").value=text;
-    save("pdf",text);
-  }
-
-  reader.readAsArrayBuffer(file);
+ let sentences=t.split(/[।.!?]/).slice(0,5).join("। ");
+ document.getElementById("summary").value=sentences;
 }
 
-// save
-function save(type,data){
-  let h=JSON.parse(localStorage.getItem("h")||"[]");
-  h.unshift({type,data,time:new Date().toLocaleString()});
-  localStorage.setItem("h",JSON.stringify(h));
+// 📋 COPY
+function copyText(){
+ let t=document.getElementById("img");
+ t.select();
+ document.execCommand("copy");
+ alert("Copied");
 }
 
-// theme
-function toggleTheme(){
-  document.body.classList.toggle("light");
+// ⬇ TXT
+function downloadTXT(){
+ let text=document.getElementById("img").value;
+ let blob=new Blob([text],{type:"text/plain"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="text.txt";
+ a.click();
+}
+
+// ⬇ PDF
+function downloadPDF(){
+ const { jsPDF } = window.jspdf;
+ let doc=new jsPDF();
+
+ let text=document.getElementById("img").value;
+ doc.text(text,10,10);
+
+ doc.save("text.pdf");
 }
 
 </script>
