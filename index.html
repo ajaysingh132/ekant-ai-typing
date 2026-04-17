@@ -80,14 +80,26 @@ function startMic(){
     save("voice",document.getElementById("v").value);
   }
 }
-
+function cleanText(text){
+  return text
+    .replace(/\n+/g," ")        // line हटाओ
+    .replace(/\s+/g," ")        // extra space हटाओ
+    .replace(/([।.!?])\s*/g,"$1\n") // sentence break
+    .trim();
+  }
+  
 // image auto OCR
 function autoOCR(e){
   let file=e.target.files[0];
   document.getElementById("prev").src=URL.createObjectURL(file);
   document.getElementById("prev").style.display="block";
   document.getElementById("status").innerText="Processing...";
+let raw = r.data.text;
 
+let clean = cleanText(raw);
+
+document.getElementById("img").value = clean;
+  
   Tesseract.recognize(file,'eng+hin').then(r=>{
     document.getElementById("img").value=r.data.text;
     document.getElementById("status").innerText="Done";
